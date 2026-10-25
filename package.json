@@ -1,0 +1,13 @@
+{
+  "name": "excitementai",
+  "version": "2.0.0",
+  "private": true,
+  "description": "ExcitementAI — an AI chat experience powered by Gemini and hosted on Vercel.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "check": "node --check index.js && node --check public/app.js"
+  },
+  "engines": { "node": ">=20" },
+  "dependencies": { "express": "^5.1.0" }
+}
