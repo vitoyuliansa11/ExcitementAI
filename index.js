@@ -42,53 +42,29 @@ app.post('/api/chat', async (req, res) => {
 
     const model = (process.env.GEMINI_MODEL || 'gemini-2.5-flash').trim();
     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+    const upstream = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': process.env.GEMINI_API_KEY
+      },
+      body: JSON.stringify({
+        systemInstruction: {
+          parts: [{
+            text: 'Kamu adalah ExcitementAI, asisten AI yang ramah, jujur, jelas, dan membantu. Jawab sesuai bahasa pengguna. Jika tidak tahu, katakan dengan jujur.'
+          }]
+        },
+        contents,
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: 2048
+        }
+      }),
+      signal: AbortSignal.timeout(45000)
+    });
+
+    const data = await upstream.json().catch(() => ({}));
     
-    let upstream;
-    let data = {};
-
-    for (let attempt = 0; attempt < 3; attempt++) {
-      try {
-        upstream = await fetch(endpoint, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-goog-api-key': process.env.GEMINI_API_KEY
-          },
-          body: JSON.stringify({
-            systemInstruction: {
-              parts: [{
-                text: 'Kamu adalah ExcitementAI, asisten AI yang ramah, jujur, jelas, dan membantu. Jawab sesuai bahasa pengguna. Jika tidak tahu, katakan dengan jujur.'
-              }]
-            },
-            contents,
-            generationConfig: {
-              temperature: 0.7,
-              maxOutputTokens: 2048
-            }
-          }),
-          signal: AbortSignal.timeout(45000)
-        });
-
-        data = await upstream.json().catch(() => ({}));
-
-        // Coba ulang hanya untuk gangguan sementara.
-        if (![429, 500, 502, 503, 504].includes(upstream.status)) {
-          break;
-        }
-
-        if (attempt < 2) {
-          await new Promise(resolve =>
-            setTimeout(resolve, 1000 * (2 ** attempt))
-          );
-        }
-      } catch (error) {
-        if (attempt === 2) throw error;
-
-        await new Promise(resolve =>
-          setTimeout(resolve, 1000 * (2 ** attempt))
-        );
-      }
-    }
     const data = await upstream.json().catch(() => ({}));
     if (!upstream.ok) {
       const upstreamMessage = data?.error?.message;
