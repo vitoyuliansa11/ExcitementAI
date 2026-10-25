@@ -89,7 +89,6 @@ app.post('/api/chat', async (req, res) => {
         );
       }
     }
-    
     const data = await upstream.json().catch(() => ({}));
     if (!upstream.ok) {
       const upstreamMessage = data?.error?.message;
