@@ -6,6 +6,94 @@
     SUPABASE_PUBLISHABLE_KEY
   );
   
+  // ===== GOOGLE LOGIN =====
+  const googleLoginButton = document.querySelector('#googleLoginButton');
+  const googleLoginLabel = document.querySelector('#googleLoginLabel');
+  const authMessage = document.querySelector('#authMessage');
+  const profileAvatar = document.querySelector('#profileAvatar');
+  const profileName = document.querySelector('#profileName');
+  const profileEmail = document.querySelector('#profileEmail');
+
+  function showAuthMessage(message) {
+    if (authMessage) authMessage.textContent = message;
+  }
+
+  function updateProfile(user) {
+    if (!user) {
+      if (profileName) profileName.textContent = 'Pengunjung';
+      if (profileEmail) profileEmail.textContent = 'Belum masuk';
+      if (profileAvatar) profileAvatar.textContent = 'K';
+      if (googleLoginLabel) {
+        googleLoginLabel.textContent = 'Masuk dengan Google';
+      }
+      return;
+    }
+
+    const name =
+      user.user_metadata?.full_name ||
+      user.user_metadata?.name ||
+      user.email?.split('@')[0] ||
+      'Pengguna';
+
+    if (profileName) profileName.textContent = name;
+    if (profileEmail) profileEmail.textContent = user.email || '';
+    if (profileAvatar) profileAvatar.textContent = name.charAt(0).toUpperCase();
+    if (googleLoginLabel) googleLoginLabel.textContent = 'Keluar';
+  }
+
+  async function handleGoogleLogin() {
+    if (!googleLoginButton) return;
+
+    googleLoginButton.disabled = true;
+    showAuthMessage('Menghubungkan ke Google...');
+
+    try {
+      const { data: { session }, error: sessionError } =
+        await supabaseClient.auth.getSession();
+
+      if (sessionError) throw sessionError;
+
+      if (session) {
+        const { error } = await supabaseClient.auth.signOut();
+        if (error) throw error;
+
+        updateProfile(null);
+        showAuthMessage('Kamu sudah keluar.');
+        return;
+      }
+
+      const { error } = await supabaseClient.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin
+        }
+      });
+
+      if (error) throw error;
+    } catch (error) {
+      showAuthMessage(error.message || 'Login gagal. Coba lagi.');
+    } finally {
+      googleLoginButton.disabled = false;
+    }
+  }
+
+  if (googleLoginButton) {
+    googleLoginButton.addEventListener('click', handleGoogleLogin);
+  }
+
+  supabaseClient.auth.onAuthStateChange((_event, session) => {
+    updateProfile(session?.user || null);
+  });
+
+  supabaseClient.auth.getSession().then(({ data, error }) => {
+    if (error) {
+      showAuthMessage('Gagal memeriksa sesi login.');
+      return;
+    }
+    updateProfile(data.session?.user || null);
+  });
+  // ===== END GOOGLE LOGIN =====
+    
   const $ = (selector) => document.querySelector(selector);
   const $$ = (selector) => Array.from(document.querySelectorAll(selector));
   const input = $('#messageInput');
