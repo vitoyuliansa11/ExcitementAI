@@ -1,243 +1,202 @@
 <!doctype html>
+
 <html lang="id">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#f7f7fb">
   <meta name="description" content="ExcitementAI — ruang untuk bertanya, berpikir, dan menciptakan sesuatu bersama AI.">
-  <title>ExcitementAI — Think beyond.</title>
-
-  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <title>ExcitementAI — Think beyond.</title>  <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/style.css">
-
-  <style>
+  <link rel="stylesheet" href="/style.css">  <style>
     .google-login-button {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      padding: 9px 13px;
-      border: 1px solid #e2e1ee;
-      border-radius: 10px;
-      background: #fff;
-      color: #45455f;
-      font: 600 12px 'DM Sans', sans-serif;
-      cursor: pointer;
-      white-space: nowrap;
-      transition: background .2s, border-color .2s;
+      display:inline-flex;align-items:center;justify-content:center;gap:8px;
+      padding:9px 13px;border:1px solid #e2e1ee;border-radius:10px;
+      background:#fff;color:#45455f;font:600 12px 'DM Sans',sans-serif;
+      cursor:pointer;white-space:nowrap;transition:background .2s,border-color .2s;
     }
-
-    .google-login-button:hover {
-      background: #f6f5ff;
-      border-color: #c9c4f5;
-    }
-
-    .google-login-button:disabled {
-      opacity: .6;
-      cursor: wait;
-    }
-
-    .google-g {
-      font: 700 16px Arial, sans-serif;
-      color: #4285f4;
-    }
-
-    .auth-message {
-      display: none;
-      margin: 8px 0;
-      padding: 10px 12px;
-      border: 1px solid #e9e6fb;
-      border-radius: 10px;
-      background: #fff;
-      color: #625b9c;
-      font-size: 12px;
-      overflow-wrap: anywhere;
-    }
-
-    .auth-message.visible {
-      display: block;
-    }
-
-    @media (max-width: 390px) {
-      .google-login-button {
-        padding: 8px 9px;
-        font-size: 11px;
-      }
-    }
-  </style>
-</head>
-
-<body>
+    .google-login-button:hover{background:#f6f5ff;border-color:#c9c4f5}
+    .google-login-button:disabled{opacity:.6;cursor:wait}
+    .google-g{font:700 16px Arial,sans-serif;color:#4285f4}
+    .auth-message{display:none;margin:8px 0;padding:10px 12px;border:1px solid #e9e6fb;border-radius:10px;background:#fff;color:#625b9c;font-size:12px;overflow-wrap:anywhere}
+    .auth-message.visible{display:block}
+    .history-section{margin-top:22px;min-height:70px}
+    .history-section .side-label{margin-bottom:9px}
+    .chat-history-list{display:flex;flex-direction:column;gap:5px;max-height:35vh;overflow-y:auto}
+    .history-empty{padding:8px 10px;color:#9694aa;font-size:12px;line-height:1.6}
+    .history-item{display:flex;align-items:center;gap:8px;width:100%;padding:10px;border:1px solid transparent;border-radius:10px;background:transparent;color:#56546d;text-align:left;font:500 12px 'DM Sans',sans-serif;cursor:pointer}
+    .history-item:hover{background:#f0effa;border-color:#e7e4f7}
+    .history-item.active{background:#efedff;border-color:#ded9ff;color:#6254c8}
+    .history-item-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+    .history-item-icon{flex-shrink:0;color:#8983c8}
+    .history-section .side-label{font-size:10px;letter-spacing:1.2px}
+    @media(max-width:390px){.google-login-button{padding:8px 9px;font-size:11px}}
+  </style></head><body>
   <div class="ambient ambient-one"></div>
-  <div class="ambient ambient-two"></div>
-
-  <div class="app-shell">
+  <div class="ambient ambient-two"></div>  <div class="app-shell">
     <aside class="sidebar" id="sidebar">
       <a class="brand" href="#home" aria-label="ExcitementAI beranda">
         <span class="brand-mark"><span></span><span></span><span></span></span>
         <span>Excitement<span class="brand-ai">AI</span></span>
-      </a>
+      </a>  <button class="new-chat" id="newChat" type="button">
+    <span class="plus">＋</span> Percakapan baru
+    <span class="shortcut">↵</span>
+  </button>
 
-      <button class="new-chat" id="newChat">
-        <span class="plus">＋</span> Percakapan baru
-        <span class="shortcut">↵</span>
-      </button>
+  <div class="side-label">RUANG KERJA</div>
+  <button class="nav-item active" data-view="chat" type="button">
+    <span class="nav-icon">✳</span> AI Assistant
+  </button>
+  <button class="nav-item" data-view="about" type="button">
+    <span class="nav-icon">◈</span> Tentang ExcitementAI
+  </button>
 
-      <div class="side-label">RUANG KERJA</div>
-      <button class="nav-item active" data-view="chat">
-        <span class="nav-icon">✳</span> AI Assistant
-      </button>
-      <button class="nav-item" data-view="about">
-        <span class="nav-icon">◈</span> Tentang ExcitementAI
-      </button>
-
-      <div class="sidebar-bottom">
-        <div class="status-card">
-          <span class="status-dot" id="statusDot"></span>
-          <div>
-            <strong id="statusTitle">Memeriksa sistem…</strong>
-            <small id="statusSub">Menghubungkan layanan</small>
-          </div>
-          <button id="refreshStatus" title="Periksa ulang status" aria-label="Periksa ulang status">↻</button>
-        </div>
-
-        <div class="profile">
-          <div class="avatar" id="profileAvatar">E</div>
-          <div class="profile-copy">
-            <strong id="profileName">ExcitementAI</strong>
-            <small id="profileEmail">Personal AI workspace</small>
-          </div>
-          <span class="profile-menu">•••</span>
-        </div>
-      </div>
-    </aside>
-
-    <main class="main-area">
-      <header class="topbar">
-        <button class="mobile-menu" id="mobileMenu" aria-label="Buka menu">☰</button>
-
-        <div class="crumb">
-          <span>Workspace</span>
-          <span class="crumb-slash">/</span>
-          <strong id="crumbCurrent">AI Assistant</strong>
-        </div>
-
-        <div class="topbar-right">
-          <button class="google-login-button" id="googleLoginButton" type="button">
-            <span class="google-g">G</span>
-            <span id="googleLoginLabel">Masuk dengan Google</span>
-          </button>
-          <span class="model-pill"><i></i> Gemini powered</span>
-          <button class="icon-button" id="aboutButton" aria-label="Tentang aplikasi">ⓘ</button>
-        </div>
-      </header>
-
-      <div class="auth-message" id="authMessage" role="status" aria-live="polite"></div>
-
-      <section class="view active" id="chatView">
-        <div class="welcome" id="welcome">
-          <div class="eyebrow"><span class="sparkle">✦</span> YOUR IDEAS, IN MOTION</div>
-          <h1>Think beyond.<br><span>Make it happen.</span></h1>
-          <p class="welcome-copy">Punya ide, pertanyaan, atau sesuatu yang ingin kamu pecahkan? Mulai dari sini.</p>
-
-          <div class="prompt-grid">
-            <button class="prompt-card" data-prompt="Bantu aku membuat rencana belajar yang realistis dan seru.">
-              <span class="prompt-icon lavender">✧</span>
-              <strong>Rencanakan sesuatu</strong>
-              <small>Ubah ide jadi langkah nyata</small>
-              <span class="card-arrow">↗</span>
-            </button>
-
-            <button class="prompt-card" data-prompt="Jelaskan konsep yang sulit dengan bahasa sederhana dan contoh.">
-              <span class="prompt-icon peach">◉</span>
-              <strong>Pahami hal baru</strong>
-              <small>Belajar dengan cara yang mudah</small>
-              <span class="card-arrow">↗</span>
-            </button>
-
-            <button class="prompt-card" data-prompt="Bantu aku membuat konsep website modern yang unik, termasuk struktur dan fiturnya.">
-              <span class="prompt-icon mint">⌘</span>
-              <strong>Ciptakan sesuatu</strong>
-              <small>Mulai proyek kreatifmu</small>
-              <span class="card-arrow">↗</span>
-            </button>
-
-            <button class="prompt-card" data-prompt="Aku punya masalah dan butuh bantuan melihatnya dari beberapa sudut pandang.">
-              <span class="prompt-icon blue">◎</span>
-              <strong>Temukan perspektif</strong>
-              <small>Pikirkan kemungkinan baru</small>
-              <span class="card-arrow">↗</span>
-            </button>
-          </div>
-        </div>
-
-        <div class="messages" id="messages" aria-live="polite"></div>
-
-        <div class="composer-wrap">
-          <form class="composer" id="chatForm">
-            <textarea id="messageInput" rows="1" maxlength="12000" placeholder="Tulis ide atau pertanyaanmu…" aria-label="Pesan untuk ExcitementAI"></textarea>
-            <div class="composer-footer">
-              <span class="composer-hint"><span class="enter-icon">↵</span> Enter untuk mengirim · Shift + Enter untuk baris baru</span>
-              <button class="send-button" id="sendButton" type="submit" aria-label="Kirim pesan">
-                <span>Kirim</span><span>↑</span>
-              </button>
-            </div>
-          </form>
-          <p class="disclaimer">ExcitementAI dapat membuat kesalahan. Periksa kembali informasi penting.</p>
-        </div>
-      </section>
-
-      <section class="view about-view" id="aboutView">
-        <div class="about-hero">
-          <div class="about-symbol">
-            <span class="brand-mark large"><span></span><span></span><span></span></span>
-          </div>
-          <div class="eyebrow">BUILT FOR WHAT'S NEXT</div>
-          <h1>Meet <span>ExcitementAI.</span></h1>
-          <p>Ruang AI yang dirancang untuk membantu ide bergerak lebih jauh — dari pertanyaan kecil sampai proyek besar.</p>
-        </div>
-
-        <div class="about-grid">
-          <article class="about-card">
-            <div class="about-card-icon">✦</div>
-            <h3>Think clearly</h3>
-            <p>Jelajahi ide, pahami konsep, dan susun pikiran dengan lebih terarah.</p>
-          </article>
-          <article class="about-card">
-            <div class="about-card-icon">⌘</div>
-            <h3>Create freely</h3>
-            <p>Bangun konsep, tulis konten, dan pecahkan masalah kreatif bersama AI.</p>
-          </article>
-          <article class="about-card">
-            <div class="about-card-icon">↗</div>
-            <h3>Move forward</h3>
-            <p>Mulai dari satu pertanyaan dan lanjutkan menjadi langkah yang bisa dilakukan.</p>
-          </article>
-        </div>
-
-        <div class="founder-card">
-          <div class="founder-avatar">AV</div>
-          <div>
-            <div class="side-label">FOUNDER & CREATOR</div>
-            <h2>Alfryza Vito Yuliansa</h2>
-            <p>Made with curiosity. Built for possibility.</p>
-          </div>
-          <div class="founder-star">✦</div>
-        </div>
-
-        <button class="back-to-chat" id="backToChat">← Kembali ke AI Assistant</button>
-      </section>
-
-      <footer class="page-footer">
-        <span>© 2026 ExcitementAI</span>
-        <span>Curiosity is the beginning.</span>
-      </footer>
-    </main>
+  <div class="history-section">
+    <div class="side-label">RIWAYAT PERCAKAPAN</div>
+    <div id="chatHistoryList" class="chat-history-list" aria-live="polite">
+      <p class="history-empty">Login untuk menyimpan riwayat chat.</p>
+    </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="/app.js" defer></script>
-</body>
-  </html>
+  <div class="sidebar-bottom">
+    <div class="status-card">
+      <span class="status-dot" id="statusDot"></span>
+      <div>
+        <strong id="statusTitle">Memeriksa sistem…</strong>
+        <small id="statusSub">Menghubungkan layanan</small>
+      </div>
+      <button id="refreshStatus" title="Periksa ulang status" aria-label="Periksa ulang status" type="button">↻</button>
+    </div>
+
+    <div class="profile">
+      <div class="avatar" id="profileAvatar">E</div>
+      <div class="profile-copy">
+        <strong id="profileName">ExcitementAI</strong>
+        <small id="profileEmail">Personal AI workspace</small>
+      </div>
+      <span class="profile-menu">•••</span>
+    </div>
+  </div>
+</aside>
+
+<main class="main-area">
+  <header class="topbar">
+    <button class="mobile-menu" id="mobileMenu" aria-label="Buka menu" type="button">☰</button>
+    <div class="crumb">
+      <span>Workspace</span>
+      <span class="crumb-slash">/</span>
+      <strong id="crumbCurrent">AI Assistant</strong>
+    </div>
+
+    <div class="topbar-right">
+      <button class="google-login-button" id="googleLoginButton" type="button">
+        <span class="google-g">G</span>
+        <span id="googleLoginLabel">Masuk dengan Google</span>
+      </button>
+      <span class="model-pill"><i></i> Gemini powered</span>
+      <button class="icon-button" id="aboutButton" aria-label="Tentang aplikasi" type="button">ⓘ</button>
+    </div>
+  </header>
+
+  <div class="auth-message" id="authMessage" role="status" aria-live="polite"></div>
+
+  <section class="view active" id="chatView">
+    <div class="welcome" id="welcome">
+      <div class="eyebrow"><span class="sparkle">✦</span> YOUR IDEAS, IN MOTION</div>
+      <h1>Think beyond.<br><span>Make it happen.</span></h1>
+      <p class="welcome-copy">Punya ide, pertanyaan, atau sesuatu yang ingin kamu pecahkan? Mulai dari sini.</p>
+
+      <div class="prompt-grid">
+        <button class="prompt-card" data-prompt="Bantu aku membuat rencana belajar yang realistis dan seru." type="button">
+          <span class="prompt-icon lavender">✧</span>
+          <strong>Rencanakan sesuatu</strong>
+          <small>Ubah ide jadi langkah nyata</small>
+          <span class="card-arrow">↗</span>
+        </button>
+        <button class="prompt-card" data-prompt="Jelaskan konsep yang sulit dengan bahasa sederhana dan contoh." type="button">
+          <span class="prompt-icon peach">◉</span>
+          <strong>Pahami hal baru</strong>
+          <small>Belajar dengan cara yang mudah</small>
+          <span class="card-arrow">↗</span>
+        </button>
+        <button class="prompt-card" data-prompt="Bantu aku membuat konsep website modern yang unik, termasuk struktur dan fiturnya." type="button">
+          <span class="prompt-icon mint">⌘</span>
+          <strong>Ciptakan sesuatu</strong>
+          <small>Mulai proyek kreatifmu</small>
+          <span class="card-arrow">↗</span>
+        </button>
+        <button class="prompt-card" data-prompt="Aku punya masalah dan butuh bantuan melihatnya dari beberapa sudut pandang." type="button">
+          <span class="prompt-icon blue">◎</span>
+          <strong>Temukan perspektif</strong>
+          <small>Pikirkan kemungkinan baru</small>
+          <span class="card-arrow">↗</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="messages" id="messages" aria-live="polite"></div>
+
+    <div class="composer-wrap">
+      <form class="composer" id="chatForm">
+        <textarea id="messageInput" rows="1" maxlength="12000" placeholder="Tulis ide atau pertanyaanmu…" aria-label="Pesan untuk ExcitementAI"></textarea>
+        <div class="composer-footer">
+          <span class="composer-hint"><span class="enter-icon">↵</span> Enter untuk mengirim · Shift + Enter untuk baris baru</span>
+          <button class="send-button" id="sendButton" type="submit">
+            <span>Kirim</span><span>↑</span>
+          </button>
+        </div>
+      </form>
+      <p class="disclaimer">ExcitementAI dapat membuat kesalahan. Periksa kembali informasi penting.</p>
+    </div>
+  </section>
+
+  <section class="view about-view" id="aboutView">
+    <div class="about-hero">
+      <div class="about-symbol">
+        <span class="brand-mark large"><span></span><span></span><span></span></span>
+      </div>
+      <div class="eyebrow">BUILT FOR WHAT'S NEXT</div>
+      <h1>Meet <span>ExcitementAI.</span></h1>
+      <p>Ruang AI yang dirancang untuk membantu ide bergerak lebih jauh — dari pertanyaan kecil sampai proyek besar.</p>
+    </div>
+
+    <div class="about-grid">
+      <article class="about-card">
+        <div class="about-card-icon">✦</div>
+        <h3>Think clearly</h3>
+        <p>Jelajahi ide, pahami konsep, dan susun pikiran dengan lebih terarah.</p>
+      </article>
+      <article class="about-card">
+        <div class="about-card-icon">⌘</div>
+        <h3>Create freely</h3>
+        <p>Bangun konsep, tulis konten, dan pecahkan masalah kreatif bersama AI.</p>
+      </article>
+      <article class="about-card">
+        <div class="about-card-icon">↗</div>
+        <h3>Move forward</h3>
+        <p>Mulai dari satu pertanyaan dan lanjutkan menjadi langkah yang bisa dilakukan.</p>
+      </article>
+    </div>
+
+    <div class="founder-card">
+      <div class="founder-avatar">AV</div>
+      <div>
+        <div class="side-label">FOUNDER & CREATOR</div>
+        <h2>Alfryza Vito Yuliansa</h2>
+        <p>Made with curiosity. Built for possibility.</p>
+      </div>
+      <div class="founder-star">✦</div>
+    </div>
+
+    <button class="back-to-chat" id="backToChat" type="button">← Kembali ke AI Assistant</button>
+  </section>
+
+  <footer class="page-footer">
+    <span>© 2026 ExcitementAI</span>
+    <span>Curiosity is the beginning.</span>
+  </footer>
+</main>
+
+  </div>  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>  <script src="/app.js" defer></script></body>
+              </html>
