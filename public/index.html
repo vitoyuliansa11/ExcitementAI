@@ -5,50 +5,23 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#f7f7fb">
-  <meta name="description" content="ExcitementAI — think beyond.">
+  <meta name="description" content="ExcitementAI — ruang untuk bertanya, berpikir, dan menciptakan sesuatu bersama AI.">
   <title>ExcitementAI — Think beyond.</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+
   <link rel="stylesheet" href="/style.css">
-
-  <!-- Konfigurasi MathJax untuk rumus matematika -->
-  <script>
-    window.MathJax = {
-      tex: {
-        inlineMath: [['\\(', '\\)'], ['$', '$']],
-        displayMath: [['\\[', '\\]'], ['$$', '$$']],
-        processEscapes: true,
-        packages: {'[+]': ['ams']}
-      },
-      options: {
-        skipHtmlTags: [
-          'script', 'noscript', 'style',
-          'textarea', 'pre', 'code'
-        ]
-      },
-      startup: {
-        typeset: false,
-        ready: function () {
-          window.MathJax.startup.defaultReady();
-
-          window.MathJax.startup.promise.then(function () {
-            document.dispatchEvent(new Event('mathjax-ready'));
-          });
-        }
-      }
-    };
-  </script>
 
   <style>
     .google-login-button {
       display:inline-flex;align-items:center;justify-content:center;gap:8px;
       padding:9px 13px;border:1px solid #e2e1ee;border-radius:10px;
       background:#fff;color:#45455f;font:600 12px 'DM Sans',sans-serif;
-      cursor:pointer;white-space:nowrap
+      cursor:pointer;white-space:nowrap;transition:background .2s,border-color .2s;
     }
-    .google-login-button:hover{background:#f6f5ff}
+    .google-login-button:hover{background:#f6f5ff;border-color:#c9c4f5}
     .google-login-button:disabled{opacity:.6;cursor:wait}
     .google-g{font:700 16px Arial,sans-serif;color:#4285f4}
     .auth-message{display:none;margin:8px 0;padding:10px 12px;border:1px solid #e9e6fb;border-radius:10px;background:#fff;color:#625b9c;font-size:12px;overflow-wrap:anywhere}
@@ -58,54 +31,116 @@
     .chat-history-list{display:flex;flex-direction:column;gap:5px;max-height:35vh;overflow-y:auto}
     .history-empty{padding:8px 10px;color:#9694aa;font-size:12px;line-height:1.6}
     .history-item{display:flex;align-items:center;gap:8px;width:100%;padding:10px;border:1px solid transparent;border-radius:10px;background:transparent;color:#56546d;text-align:left;font:500 12px 'DM Sans',sans-serif;cursor:pointer}
-    .history-item:hover{background:#f0effa}
+    .history-item:hover{background:#f0effa;border-color:#e7e4f7}
     .history-item.active{background:#efedff;border-color:#ded9ff;color:#6254c8}
     .history-item-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
     .history-item-icon{flex-shrink:0;color:#8983c8}
+    .history-section .side-label{font-size:10px;letter-spacing:1.2px}
 
-    /* Format Markdown */
-    .message-text{font-family:'DM Sans',sans-serif;font-size:15px;line-height:1.85;color:#343348;overflow-wrap:anywhere;min-width:0}
-    .message-text>:first-child{margin-top:0}
-    .message-text>:last-child{margin-bottom:0}
-    .message-text p{margin:0 0 14px}
-    .message-text h1,.message-text h2,.message-text h3,.message-text h4{font-family:'Space Grotesk',sans-serif;color:#29263e;font-weight:700;line-height:1.4;margin:22px 0 10px}
-    .message-text h1{font-size:1.55em}
-    .message-text h2{font-size:1.35em}
-    .message-text h3{font-size:1.15em}
-    .message-text strong{font-weight:700;color:#28243d}
-    .message-text ul,.message-text ol{margin:8px 0 16px;padding-left:25px}
-    .message-text li{margin:6px 0;padding-left:3px}
-    .message-text blockquote{margin:14px 0;padding:10px 15px;border-left:3px solid #9385ee;background:#f5f3ff;border-radius:0 10px 10px 0;color:#5c5874}
-    .message-text code{padding:2px 6px;border-radius:5px;background:#f0eef8;color:#6554b8;font-family:monospace;font-size:.9em;overflow-wrap:anywhere}
-    .message-text pre{margin:14px 0;padding:15px;max-width:100%;overflow-x:auto;border:1px solid #e9e6f5;border-radius:12px;background:#f7f6fb;white-space:pre;-webkit-overflow-scrolling:touch}
-    .message-text pre code{display:block;padding:0;background:transparent;color:#39364c;font-size:13px;overflow-wrap:normal;white-space:pre}
-    .message-text a{color:#6554c8;text-decoration:underline;overflow-wrap:anywhere}
-    .message-text hr{border:0;border-top:1px solid #e8e5f2;margin:18px 0}
-    .message-text table{display:block;max-width:100%;overflow-x:auto;border-collapse:collapse;margin:14px 0}
-    .message-text th,.message-text td{padding:9px 12px;border:1px solid #e5e1f0;text-align:left}
-    .message-text th{background:#f2f0fb;font-weight:700}
-    .message-text img{max-width:100%;height:auto;border-radius:10px}
-
-    /* Rumus matematika MathJax */
-    .message-text mjx-container{
+    /* ===== MARKDOWN CHAT ===== */
+    .message-text {
+      font-family:'DM Sans',sans-serif;
+      font-size:15px;
+      line-height:1.85;
+      color:#343348;
+      overflow-wrap:anywhere;
+      word-break:normal;
+    }
+    .message-text > :first-child {margin-top:0}
+    .message-text > :last-child {margin-bottom:0}
+    .message-text p {margin:0 0 14px}
+    .message-text h1,.message-text h2,
+    .message-text h3,.message-text h4 {
+      font-family:'Space Grotesk',sans-serif;
+      color:#29263e;
+      font-weight:700;
+      line-height:1.4;
+      margin:22px 0 10px;
+    }
+    .message-text h1 {font-size:1.55em}
+    .message-text h2 {font-size:1.35em}
+    .message-text h3 {font-size:1.15em}
+    .message-text h4 {font-size:1.05em}
+    .message-text strong {font-weight:700;color:#28243d}
+    .message-text em {font-style:italic}
+    .message-text ul,.message-text ol {
+      margin:8px 0 16px;
+      padding-left:25px;
+    }
+    .message-text li {margin:6px 0;padding-left:3px}
+    .message-text li > p {margin:4px 0}
+    .message-text blockquote {
+      margin:14px 0;
+      padding:10px 15px;
+      border-left:3px solid #9385ee;
+      background:#f5f3ff;
+      border-radius:0 10px 10px 0;
+      color:#5c5874;
+    }
+    .message-text code {
+      padding:2px 6px;
+      border-radius:5px;
+      background:#f0eef8;
+      color:#6554b8;
+      font-family:monospace;
+      font-size:.9em;
+      overflow-wrap:anywhere;
+    }
+    .message-text pre {
+      margin:14px 0;
+      padding:15px;
       max-width:100%;
       overflow-x:auto;
-      overflow-y:hidden;
+      border:1px solid #e9e6f5;
+      border-radius:12px;
+      background:#f7f6fb;
+      white-space:pre;
+      -webkit-overflow-scrolling:touch;
     }
-    .message-text mjx-container[display="true"]{
-      margin:1em 0!important;
-      padding:4px 0;
+    .message-text pre code {
+      display:block;
+      padding:0;
+      background:transparent;
+      color:#39364c;
+      font-size:13px;
+      overflow-wrap:normal;
+      white-space:pre;
     }
-    .message-text mjx-container mjx-math{
+    .message-text a {
+      color:#6554c8;
+      text-decoration:underline;
+      overflow-wrap:anywhere;
+    }
+    .message-text hr {
+      border:0;
+      border-top:1px solid #e8e5f2;
+      margin:18px 0;
+    }
+    .message-text table {
+      display:block;
       max-width:100%;
+      overflow-x:auto;
+      border-collapse:collapse;
+      margin:14px 0;
+      -webkit-overflow-scrolling:touch;
     }
+    .message-text th,.message-text td {
+      padding:9px 12px;
+      border:1px solid #e5e1f0;
+      text-align:left;
+    }
+    .message-text th {background:#f2f0fb;font-weight:700}
+    .message-text img {max-width:100%;height:auto;border-radius:10px}
+    .message-text input[type="checkbox"] {margin-right:7px}
 
-    @media(max-width:600px){
-      .message-text{font-size:15px;line-height:1.8}
-      .message-text pre{padding:12px}
-      .message-text mjx-container[display="true"]{
-        font-size:95%;
-      }
+    @media(max-width:600px) {
+      .message-text {font-size:15px;line-height:1.8}
+      .message-text pre {padding:12px}
+      .message-text h1 {font-size:1.4em}
+      .message-text h2 {font-size:1.25em}
+    }
+    @media(max-width:390px) {
+      .google-login-button{padding:8px 9px;font-size:11px}
     }
   </style>
 </head>
@@ -136,7 +171,7 @@
 
       <div class="history-section">
         <div class="side-label">RIWAYAT PERCAKAPAN</div>
-        <div id="chatHistoryList" class="chat-history-list">
+        <div id="chatHistoryList" class="chat-history-list" aria-live="polite">
           <p class="history-empty">Login untuk menyimpan riwayat chat.</p>
         </div>
       </div>
@@ -148,7 +183,7 @@
             <strong id="statusTitle">Memeriksa sistem…</strong>
             <small id="statusSub">Menghubungkan layanan</small>
           </div>
-          <button id="refreshStatus" title="Periksa status" aria-label="Periksa status" type="button">↻</button>
+          <button id="refreshStatus" title="Periksa ulang status" aria-label="Periksa ulang status" type="button">↻</button>
         </div>
 
         <div class="profile">
@@ -197,21 +232,18 @@
               <small>Ubah ide jadi langkah nyata</small>
               <span class="card-arrow">↗</span>
             </button>
-
             <button class="prompt-card" data-prompt="Jelaskan konsep yang sulit dengan bahasa sederhana dan contoh." type="button">
               <span class="prompt-icon peach">◉</span>
               <strong>Pahami hal baru</strong>
               <small>Belajar dengan cara yang mudah</small>
               <span class="card-arrow">↗</span>
             </button>
-
             <button class="prompt-card" data-prompt="Bantu aku membuat konsep website modern yang unik, termasuk struktur dan fiturnya." type="button">
               <span class="prompt-icon mint">⌘</span>
               <strong>Ciptakan sesuatu</strong>
               <small>Mulai proyek kreatifmu</small>
               <span class="card-arrow">↗</span>
             </button>
-
             <button class="prompt-card" data-prompt="Aku punya masalah dan butuh bantuan melihatnya dari beberapa sudut pandang." type="button">
               <span class="prompt-icon blue">◎</span>
               <strong>Temukan perspektif</strong>
@@ -285,14 +317,10 @@
     </main>
   </div>
 
-  <!-- Library -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.4.16/dist/purify.min.js"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-
-  <!-- App -->
   <script src="/app.js" defer></script>
 </body>
-  </html>
-        
+                                           </html>
+            
