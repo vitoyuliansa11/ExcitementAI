@@ -1,7 +1,14 @@
 
 (() => {
+  'use strict';
+
   const SUPABASE_URL = 'https://fyywlqohzjdmygnstxvv.supabase.co';
   const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_XxAAd6qaTpKQgTtT0xlLCA_JuLbHxNw';
+
+  if (!window.supabase) {
+    console.error('Supabase library gagal dimuat.');
+    return;
+  }
 
   const supabaseClient = window.supabase.createClient(
     SUPABASE_URL,
@@ -21,6 +28,11 @@
   const aboutView = $('#aboutView');
   const sidebar = $('#sidebar');
   const chatHistoryList = $('#chatHistoryList');
+
+  if (!input || !form || !sendButton || !messages || !welcome) {
+    console.error('Elemen utama chat tidak ditemukan di index.html.');
+    return;
+  }
 
   // ===== STATE =====
   let history = [];
@@ -92,11 +104,14 @@
 
       const { error } = await supabaseClient.auth.signInWithOAuth({
         provider: 'google',
-        options: { redirectTo: window.location.origin }
+        options: {
+          redirectTo: window.location.origin
+        }
       });
 
       if (error) throw error;
     } catch (error) {
+      console.error('Login error:', error);
       showAuthMessage(error.message || 'Login gagal. Coba lagi.');
     } finally {
       googleLoginButton.disabled = false;
@@ -111,8 +126,8 @@
   function setView(view) {
     const about = view === 'about';
 
-    chatView.classList.toggle('active', !about);
-    aboutView.classList.toggle('active', about);
+    if (chatView) chatView.classList.toggle('active', !about);
+    if (aboutView) aboutView.classList.toggle('active', about);
 
     const crumb = $('#crumbCurrent');
     if (crumb) {
@@ -123,14 +138,38 @@
       item.classList.toggle('active', item.dataset.view === view);
     });
 
-    sidebar.classList.remove('open');
+    if (sidebar) sidebar.classList.remove('open');
+  }
+
+  // ===== MARKDOWN =====
+  function renderMarkdown(element, text) {
+    const source = String(text ?? '');
+
+    // Fallback jika library Markdown tidak berhasil dimuat.
+    if (!window.marked || !window.DOMPurify) {
+      element.textContent = source;
+      return;
+    }
+
+    try {
+      const html = window.marked.parse(source, {
+        gfm: true,
+        breaks: false
+      });
+
+      // Bersihkan HTML sebelum ditampilkan.
+      element.innerHTML = window.DOMPurify.sanitize(html, {
+        USE_PROFILES: { html: true }
+      });
+    } catch (error) {
+      console.error('Markdown error:', error);
+      element.textContent = source;
+    }
   }
 
   // ===== MESSAGE DISPLAY =====
   function addMessage(role, text, options = {}) {
     const row = document.createElement('div');
-
-    // FIX: template literal agar class user/assistant terbentuk benar.
     row.className = `message ${role}${options.error ? ' error' : ''}`;
 
     const avatar = document.createElement('div');
@@ -146,7 +185,12 @@
 
     const content = document.createElement('div');
     content.className = 'message-text';
-    content.textContent = text;
+
+    if (role === 'assistant') {
+      renderMarkdown(content, text);
+    } else {
+      content.textContent = String(text ?? '');
+    }
 
     body.append(name, content);
     row.append(avatar, body);
@@ -165,7 +209,9 @@
 
   function addTyping() {
     const row = addMessage('assistant', '');
-    row.querySelector('.message-text').innerHTML =
+    const textElement = row.querySelector('.message-text');
+
+    textElement.innerHTML =
       '<div class="typing" aria-label="AI sedang mengetik">' +
       '<span></span><span></span><span></span></div>';
 
@@ -173,15 +219,12 @@
   }
 
   function clearDisplayedMessages() {
-    messages.innerHTML = '';
+    messages.replaceChildren();
     messages.classList.remove('has-messages');
   }
 
   function resizeInput() {
-    if (!input) return;
     input.style.height = 'auto';
-
-    // FIX: hitung tinggi input dengan template literal yang benar.
     input.style.height = `${Math.min(input.scrollHeight, 160)}px`;
   }
 
@@ -226,6 +269,7 @@
       title.title = conversation.title || 'Percakapan baru';
 
       button.append(icon, title);
+
       button.addEventListener('click', () => {
         openConversation(conversation.id);
       });
@@ -381,7 +425,6 @@
           .single();
 
         if (error) throw error;
-
         currentConversationId = data.id;
       }
 
@@ -416,8 +459,13 @@
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message, history })
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          message,
+          history
+        })
       });
 
       const data = await response.json().catch(() => ({}));
@@ -488,7 +536,7 @@
       const data = await response.json();
 
       if (!response.ok || data.status !== 'ok') {
-        throw new Error('health check failed');
+        throw new Error('Health check gagal');
       }
 
       if (data.providerConfigured) {
@@ -500,7 +548,9 @@
         title.textContent = 'Setup diperlukan';
         sub.textContent = 'Konfigurasi AI belum lengkap';
       }
-    } catch (_error) {
+    } catch (error) {
+      console.error('Health check error:', error);
+
       dot.className = 'status-dot bad';
       title.textContent = 'Server belum terhubung';
       sub.textContent = 'Periksa deployment Vercel';
@@ -560,21 +610,32 @@
     });
   });
 
-  $('#newChat').addEventListener('click', startNewChat);
+  const newChatButton = $('#newChat');
+  if (newChatButton) {
+    newChatButton.addEventListener('click', startNewChat);
+  }
 
-  $('#mobileMenu').addEventListener('click', () => {
-    sidebar.classList.toggle('open');
-  });
+  const mobileMenu = $('#mobileMenu');
+  if (mobileMenu && sidebar) {
+    mobileMenu.addEventListener('click', () => {
+      sidebar.classList.toggle('open');
+    });
+  }
 
-  $('#refreshStatus').addEventListener('click', checkHealth);
+  const refreshStatus = $('#refreshStatus');
+  if (refreshStatus) {
+    refreshStatus.addEventListener('click', checkHealth);
+  }
 
-  $('#aboutButton').addEventListener('click', () => {
-    setView('about');
-  });
+  const aboutButton = $('#aboutButton');
+  if (aboutButton) {
+    aboutButton.addEventListener('click', () => setView('about'));
+  }
 
-  $('#backToChat').addEventListener('click', () => {
-    setView('chat');
-  });
+  const backToChat = $('#backToChat');
+  if (backToChat) {
+    backToChat.addEventListener('click', () => setView('chat'));
+  }
 
   $$('.nav-item').forEach((item) => {
     item.addEventListener('click', () => {
@@ -583,18 +644,23 @@
   });
 
   document.addEventListener('click', (event) => {
+    const mobileMenuButton = $('#mobileMenu');
+
     if (
       window.innerWidth <= 760 &&
+      sidebar &&
       sidebar.classList.contains('open') &&
       !sidebar.contains(event.target) &&
-      !$('#mobileMenu').contains(event.target)
+      mobileMenuButton &&
+      !mobileMenuButton.contains(event.target)
     ) {
       sidebar.classList.remove('open');
     }
   });
 
-  // Initial state
+  // ===== INITIAL STATE =====
   renderHistoryList();
+  resizeInput();
   checkHealth();
 })();
-      
+ 
