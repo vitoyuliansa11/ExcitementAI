@@ -141,28 +141,162 @@
     if (sidebar) sidebar.classList.remove('open');
   }
 
-  // ===== MARKDOWN =====
+  // ===== MATHJAX QUEUE =====
+  const pendingMathElements = new Set();
+
+  async function typesetMath(element) {
+    if (!element) return;
+
+    const mathJax = window.MathJax;
+
+    if (mathJax && typeof mathJax.typesetPromise === 'function') {
+      try {
+        if (typeof mathJax.typesetClear === 'function') {
+          mathJax.typesetClear([element]);
+        }
+
+        await mathJax.typesetPromise([element]);
+      } catch (error) {
+        console.error('MathJax render error:', error);
+      }
+
+      return;
+    }
+
+    // MathJax mungkin masih dalam proses dimuat.
+    pendingMathElements.add(element);
+  }
+
+  document.addEventListener('mathjax-ready', async () => {
+    const mathJax = window.MathJax;
+
+    if (!mathJax || typeof mathJax.typesetPromise !== 'function') {
+      return;
+    }
+
+    const elements = Array.from(pendingMathElements);
+    pendingMathElements.clear();
+
+    for (const element of elements) {
+      if (!element.isConnected) continue;
+
+      try {
+        await mathJax.typesetPromise([element]);
+      } catch (error) {
+        console.error('MathJax render error:', error);
+      }
+    }
+  });
+
+  // ===== MARKDOWN + LATEX =====
+  function restoreMathPlaceholders(element, expressions) {
+    if (!expressions.length) return;
+
+    const walker = document.createTreeWalker(
+      element,
+      NodeFilter.SHOW_TEXT
+    );
+
+    const textNodes = [];
+    let currentNode;
+
+    while ((currentNode = walker.nextNode())) {
+      if (currentNode.nodeValue.includes('EXCITEMENTMATH')) {
+        textNodes.push(currentNode);
+      }
+    }
+
+    const tokenPattern = /EXCITEMENTMATH(\d+)END/g;
+
+    textNodes.forEach((node) => {
+      const text = node.nodeValue;
+      const fragment = document.createDocumentFragment();
+
+      let lastIndex = 0;
+      let match;
+      let found = false;
+
+      tokenPattern.lastIndex = 0;
+
+      while ((match = tokenPattern.exec(text)) !== null) {
+        const index = Number(match[1]);
+
+        if (index < 0 || index >= expressions.length) continue;
+
+        found = true;
+
+        if (match.index > lastIndex) {
+          fragment.appendChild(
+            document.createTextNode(text.slice(lastIndex, match.index))
+          );
+        }
+
+        // Gunakan text node, bukan innerHTML, agar LaTeX tetap aman.
+        fragment.appendChild(
+          document.createTextNode(expressions[index])
+        );
+
+        lastIndex = match.index + match[0].length;
+      }
+
+      if (!found) return;
+
+      if (lastIndex < text.length) {
+        fragment.appendChild(
+          document.createTextNode(text.slice(lastIndex))
+        );
+      }
+
+      node.parentNode.replaceChild(fragment, node);
+    });
+  }
+
   function renderMarkdown(element, text) {
     const source = String(text ?? '');
 
-    // Fallback jika library Markdown tidak berhasil dimuat.
     if (!window.marked || !window.DOMPurify) {
       element.textContent = source;
       return;
     }
 
     try {
-      const html = window.marked.parse(source, {
+      const expressions = [];
+
+      /*
+       * Lindungi rumus sebelum Markdown memproses tanda backslash,
+       * underscore, dan simbol lainnya.
+       *
+       * Format yang didukung:
+       * \( rumus inline \)
+       * \[ rumus display \]
+       * $ rumus inline $
+       * $$ rumus display $$
+       */
+      const protectedSource = source.replace(
+        /(\$\$[\s\S]+?\$\$|\\\[[\s\S]+?\\\]|\\\([\s\S]+?\\\]|(?<!\\)\$(?!\$)(?:\\.|[^$\n])+?(?<!\\)\$(?!\$))/g,
+        (match) => {
+          const index = expressions.push(match) - 1;
+          return `EXCITEMENTMATH${index}END`;
+        }
+      );
+
+      const html = window.marked.parse(protectedSource, {
         gfm: true,
         breaks: false
       });
 
-      // Bersihkan HTML sebelum ditampilkan.
+      // Sanitasi HTML hasil Markdown sebelum masuk ke halaman.
       element.innerHTML = window.DOMPurify.sanitize(html, {
         USE_PROFILES: { html: true }
       });
+
+      // Kembalikan ekspresi matematika sebagai teks biasa yang aman.
+      restoreMathPlaceholders(element, expressions);
+
+      // Render rumus, baik MathJax sudah siap maupun masih dimuat.
+      typesetMath(element);
     } catch (error) {
-      console.error('Markdown error:', error);
+      console.error('Markdown render error:', error);
       element.textContent = source;
     }
   }
@@ -219,6 +353,15 @@
   }
 
   function clearDisplayedMessages() {
+    // Bersihkan referensi MathJax sebelum elemen pesan dihapus.
+    if (
+      window.MathJax &&
+      typeof window.MathJax.typesetClear === 'function'
+    ) {
+      window.MathJax.typesetClear([messages]);
+    }
+
+    pendingMathElements.clear();
     messages.replaceChildren();
     messages.classList.remove('has-messages');
   }
@@ -622,45 +765,4 @@
     });
   }
 
-  const refreshStatus = $('#refreshStatus');
-  if (refreshStatus) {
-    refreshStatus.addEventListener('click', checkHealth);
-  }
-
-  const aboutButton = $('#aboutButton');
-  if (aboutButton) {
-    aboutButton.addEventListener('click', () => setView('about'));
-  }
-
-  const backToChat = $('#backToChat');
-  if (backToChat) {
-    backToChat.addEventListener('click', () => setView('chat'));
-  }
-
-  $$('.nav-item').forEach((item) => {
-    item.addEventListener('click', () => {
-      setView(item.dataset.view);
-    });
-  });
-
-  document.addEventListener('click', (event) => {
-    const mobileMenuButton = $('#mobileMenu');
-
-    if (
-      window.innerWidth <= 760 &&
-      sidebar &&
-      sidebar.classList.contains('open') &&
-      !sidebar.contains(event.target) &&
-      mobileMenuButton &&
-      !mobileMenuButton.contains(event.target)
-    ) {
-      sidebar.classList.remove('open');
-    }
-  });
-
-  // ===== INITIAL STATE =====
-  renderHistoryList();
-  resizeInput();
-  checkHealth();
-})();
- 
+  const refreshS
