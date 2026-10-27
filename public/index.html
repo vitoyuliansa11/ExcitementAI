@@ -13,6 +13,34 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/style.css">
 
+  <!-- Konfigurasi MathJax untuk rumus matematika -->
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['\\(', '\\)'], ['$', '$']],
+        displayMath: [['\\[', '\\]'], ['$$', '$$']],
+        processEscapes: true,
+        packages: {'[+]': ['ams']}
+      },
+      options: {
+        skipHtmlTags: [
+          'script', 'noscript', 'style',
+          'textarea', 'pre', 'code'
+        ]
+      },
+      startup: {
+        typeset: false,
+        ready: function () {
+          window.MathJax.startup.defaultReady();
+
+          window.MathJax.startup.promise.then(function () {
+            document.dispatchEvent(new Event('mathjax-ready'));
+          });
+        }
+      }
+    };
+  </script>
+
   <style>
     .google-login-button {
       display:inline-flex;align-items:center;justify-content:center;gap:8px;
@@ -35,8 +63,8 @@
     .history-item-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
     .history-item-icon{flex-shrink:0;color:#8983c8}
 
-    /* Format jawaban Markdown */
-    .message-text{font-family:'DM Sans',sans-serif;font-size:15px;line-height:1.85;color:#343348;overflow-wrap:anywhere}
+    /* Format Markdown */
+    .message-text{font-family:'DM Sans',sans-serif;font-size:15px;line-height:1.85;color:#343348;overflow-wrap:anywhere;min-width:0}
     .message-text>:first-child{margin-top:0}
     .message-text>:last-child{margin-bottom:0}
     .message-text p{margin:0 0 14px}
@@ -57,7 +85,28 @@
     .message-text th,.message-text td{padding:9px 12px;border:1px solid #e5e1f0;text-align:left}
     .message-text th{background:#f2f0fb;font-weight:700}
     .message-text img{max-width:100%;height:auto;border-radius:10px}
-    @media(max-width:600px){.message-text{font-size:15px;line-height:1.8}.message-text pre{padding:12px}}
+
+    /* Rumus matematika MathJax */
+    .message-text mjx-container{
+      max-width:100%;
+      overflow-x:auto;
+      overflow-y:hidden;
+    }
+    .message-text mjx-container[display="true"]{
+      margin:1em 0!important;
+      padding:4px 0;
+    }
+    .message-text mjx-container mjx-math{
+      max-width:100%;
+    }
+
+    @media(max-width:600px){
+      .message-text{font-size:15px;line-height:1.8}
+      .message-text pre{padding:12px}
+      .message-text mjx-container[display="true"]{
+        font-size:95%;
+      }
+    }
   </style>
 </head>
 
@@ -240,9 +289,10 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.4.16/dist/purify.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
 
   <!-- App -->
   <script src="/app.js" defer></script>
 </body>
   </html>
-  
+        
