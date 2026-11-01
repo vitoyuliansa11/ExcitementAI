@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://excitement-ai-groq.vercel.app/sitemap.xml
