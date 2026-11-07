@@ -1,6 +1,7 @@
 
 const express = require('express');
 const path = require('path');
+const crypto = require('crypto');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -10,39 +11,260 @@ app.disable('x-powered-by');
 app.use(express.json({ limit: '1mb' }));
 app.use(express.static(PUBLIC_DIR, { extensions: ['html'] }));
 
+const {
+  GROQ_API_KEY,
+  GROQ_MODEL,
+  SUPABASE_URL,
+  SUPABASE_PUBLISHABLE_KEY,
+  SUPABASE_SECRET_KEY,
+  GUEST_TOKEN_SECRET
+} = process.env;
+
+const COOKIE_NAME = 'ea_guest';
+const COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
+
+function getCookie(req, name) {
+  const cookies = (req.headers.cookie || '').split(';');
+
+  for (const cookie of cookies) {
+    const index = cookie.indexOf('=');
+    if (index < 0) continue;
+
+    const key = cookie.slice(0, index).trim();
+    if (key === name) {
+      return cookie.slice(index + 1).trim();
+    }
+  }
+
+  return null;
+}
+
+function signGuestId(id) {
+  return crypto
+    .createHmac('sha256', GUEST_TOKEN_SECRET)
+    .update(id)
+    .digest('hex');
+}
+
+function safeEqual(a, b) {
+  const first = Buffer.from(a);
+  const second = Buffer.from(b);
+
+  return first.length === second.length &&
+    crypto.timingSafeEqual(first, second);
+}
+
+function getGuestId(req) {
+  const value = getCookie(req, COOKIE_NAME);
+  if (!value) return null;
+
+  const separator = value.lastIndexOf('.');
+  if (separator < 0) return null;
+
+  const id = value.slice(0, separator);
+  const signature = value.slice(separator + 1);
+
+  if (!/^[a-f0-9]{48}$/.test(id)) return null;
+
+  const expected = signGuestId(id);
+
+  return safeEqual(signature, expected) ? id : null;
+}
+
+function setGuestCookie(res, id) {
+  const value = `${id}.${signGuestId(id)}`;
+
+  const cookie = [
+    `${COOKIE_NAME}=${value}`,
+    `Max-Age=${COOKIE_MAX_AGE}`,
+    'Path=/',
+    'HttpOnly',
+    'SameSite=Lax',
+    ...(process.env.NODE_ENV === 'production' || process.env.VERCEL
+      ? ['Secure']
+      : [])
+  ].join('; ');
+
+  res.append('Set-Cookie', cookie);
+}
+
+async function verifySupabaseUser(accessToken) {
+  const response = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+    method: 'GET',
+    headers: {
+      apikey: SUPABASE_PUBLISHABLE_KEY,
+      Authorization: `Bearer ${accessToken}`
+    },
+    signal: AbortSignal.timeout(15000)
+  });
+
+  if (!response.ok) return null;
+
+  const user = await response.json();
+
+  if (!user || typeof user.id !== 'string') return null;
+
+  return user;
+}
+
+async function consumeQuota({ userId, guestId }) {
+  const response = await fetch(
+    `${SUPABASE_URL}/rest/v1/rpc/ea_consume_daily_quota`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: SUPABASE_SECRET_KEY
+      },
+      body: JSON.stringify({
+        p_user_id: userId || null,
+        p_guest_key: guestId || null
+      }),
+      signal: AbortSignal.timeout(15000)
+    }
+  );
+
+  const result = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    console.error('Supabase quota error:', response.status, result);
+
+    throw new Error('QUOTA_SERVICE_ERROR');
+  }
+
+  const quota = Array.isArray(result) ? result[0] : result;
+
+  if (!quota || typeof quota.allowed !== 'boolean') {
+    throw new Error('INVALID_QUOTA_RESPONSE');
+  }
+
+  return quota;
+}
+
 app.get('/api/health', (_req, res) => {
+  const configured = Boolean(
+    GROQ_API_KEY &&
+    SUPABASE_URL &&
+    SUPABASE_PUBLISHABLE_KEY &&
+    SUPABASE_SECRET_KEY &&
+    GUEST_TOKEN_SECRET
+  );
+
   res.status(200).json({
     status: 'ok',
     app: 'ExcitementAI',
-    version: '2.1.0',
+    version: '2.2.0',
     provider: 'Groq',
-    providerConfigured: Boolean(process.env.GROQ_API_KEY),
+    providerConfigured: Boolean(GROQ_API_KEY),
+    quotaConfigured: Boolean(
+      SUPABASE_URL &&
+      SUPABASE_PUBLISHABLE_KEY &&
+      SUPABASE_SECRET_KEY &&
+      GUEST_TOKEN_SECRET
+    ),
+    configured,
     timestamp: new Date().toISOString()
   });
 });
 
 app.post('/api/chat', async (req, res) => {
   try {
-    const apiKey = process.env.GROQ_API_KEY;
-
-    if (!apiKey) {
+    if (
+      !GROQ_API_KEY ||
+      !SUPABASE_URL ||
+      !SUPABASE_PUBLISHABLE_KEY ||
+      !SUPABASE_SECRET_KEY ||
+      !GUEST_TOKEN_SECRET
+    ) {
       return res.status(503).json({
-        error: 'AI belum dikonfigurasi. Tambahkan GROQ_API_KEY di Environment Variables Vercel.'
+        error: 'Konfigurasi server belum lengkap. Hubungi administrator.'
       });
     }
 
     const body = req.body || {};
+
     const message =
-      typeof body.message === 'string' ? body.message.trim() : '';
-    const history = Array.isArray(body.history) ? body.history : [];
+      typeof body.message === 'string'
+        ? body.message.trim()
+        : '';
+
+    const history = Array.isArray(body.history)
+      ? body.history
+      : [];
 
     if (!message) {
-      return res.status(400).json({ error: 'Pesan tidak boleh kosong.' });
+      return res.status(400).json({
+        error: 'Pesan tidak boleh kosong.'
+      });
     }
 
     if (message.length > 12000) {
       return res.status(413).json({
         error: 'Pesan terlalu panjang. Coba ringkas pesanmu.'
+      });
+    }
+
+    // Verifikasi identitas Google melalui Supabase Auth.
+    const authorization = req.headers.authorization || '';
+    const bearerMatch = authorization.match(/^Bearer\s+(.+)$/i);
+
+    let user = null;
+
+    if (authorization && !bearerMatch) {
+      return res.status(401).json({
+        error: 'Format autentikasi tidak valid.'
+      });
+    }
+
+    if (bearerMatch) {
+      try {
+        user = await verifySupabaseUser(bearerMatch[1]);
+      } catch (error) {
+        console.error('Auth verification error:', error.message);
+        return res.status(503).json({
+          error: 'Gagal memverifikasi login. Coba lagi.'
+        });
+      }
+
+      if (!user) {
+        return res.status(401).json({
+          error: 'Sesi login tidak valid atau sudah kedaluwarsa.'
+        });
+      }
+    }
+
+    // Guest mendapatkan identitas melalui cookie bertanda tangan.
+    let guestId = null;
+
+    if (!user) {
+      guestId = getGuestId(req);
+
+      if (!guestId) {
+        guestId = crypto.randomBytes(24).toString('hex');
+        setGuestCookie(res, guestId);
+      }
+    }
+
+    // Konsumsi kuota dilakukan secara atomik di database.
+    let quota;
+
+    try {
+      quota = await consumeQuota({
+        userId: user ? user.id : null,
+        guestId
+      });
+    } catch (error) {
+      console.error('Quota error:', error.message);
+
+      return res.status(503).json({
+        error: 'Sistem kuota sedang bermasalah. Coba lagi nanti.'
+      });
+    }
+
+    if (!quota.allowed) {
+      return res.status(429).json({
+        error: 'Kuota harian kamu sudah habis.',
+        quota
       });
     }
 
@@ -80,16 +302,23 @@ ATURAN UMUM:
       if (!item || typeof item.text !== 'string') continue;
 
       const role = item.role === 'model' ? 'assistant' : item.role;
+
       if (!['user', 'assistant'].includes(role)) continue;
 
       const text = item.text.trim().slice(0, 12000);
-      if (text) messages.push({ role, content: text });
+
+      if (text) {
+        messages.push({ role, content: text });
+      }
     }
 
-    messages.push({ role: 'user', content: message });
+    messages.push({
+      role: 'user',
+      content: message
+    });
 
     const model = (
-      process.env.GROQ_MODEL || 'llama-3.3-70b-versatile'
+      GROQ_MODEL || 'llama-3.3-70b-versatile'
     ).trim();
 
     const upstream = await fetch(
@@ -98,7 +327,7 @@ ATURAN UMUM:
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${apiKey}`
+          Authorization: `Bearer ${GROQ_API_KEY}`
         },
         body: JSON.stringify({
           model,
@@ -120,19 +349,13 @@ ATURAN UMUM:
 
       if (status === 401 || status === 403) {
         return res.status(502).json({
-          error: 'Groq menolak API key atau akses akun. Periksa konfigurasi Groq.'
+          error: 'Groq menolak API key atau akses akun.'
         });
       }
 
       if (status === 429) {
-        return res.status(429).json({
-          error: 'Batas penggunaan Groq tercapai. Coba lagi nanti.'
-        });
-      }
-
-      if (status === 400 || status === 404) {
         return res.status(502).json({
-          error: 'Model atau permintaan Groq tidak diterima. Periksa konfigurasi model.'
+          error: 'Layanan Groq sedang mencapai batas penggunaan.'
         });
       }
 
@@ -145,11 +368,16 @@ ATURAN UMUM:
 
     if (!answer) {
       return res.status(502).json({
-        error: 'Groq tidak mengirim jawaban. Coba kirim ulang pesanmu.'
+        error: 'Groq tidak mengirim jawaban. Coba kirim ulang.'
       });
     }
 
-    return res.status(200).json({ answer, model });
+    return res.status(200).json({
+      answer,
+      model,
+      quota
+    });
+
   } catch (error) {
     if (
       error?.name === 'TimeoutError' ||
@@ -163,23 +391,28 @@ ATURAN UMUM:
     console.error('Chat route error:', error?.message || error);
 
     return res.status(500).json({
-      error: 'Terjadi kesalahan di server. Coba lagi beberapa saat.'
+      error: 'Terjadi kesalahan di server. Coba lagi.'
     });
   }
 });
 
-app.use('/api', (_req, res) =>
-  res.status(404).json({ error: 'Endpoint API tidak ditemukan.' })
-);
+app.use('/api', (_req, res) => {
+  res.status(404).json({
+    error: 'Endpoint API tidak ditemukan.'
+  });
+});
 
 app.use((req, res, next) => {
   if (req.method !== 'GET') return next();
+
   return res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
 });
 
 app.use((err, _req, res, _next) => {
   if (err instanceof SyntaxError && 'body' in err) {
-    return res.status(400).json({ error: 'Format JSON tidak valid.' });
+    return res.status(400).json({
+      error: 'Format JSON tidak valid.'
+    });
   }
 
   console.error('Unhandled server error:', err?.message || err);
@@ -196,4 +429,4 @@ if (require.main === module) {
 }
 
 module.exports = app;
-  
+    
