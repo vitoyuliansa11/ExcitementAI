@@ -42,7 +42,39 @@
   let cachedConversations = [];
   let busy = false;
   let loadingHistory = false;
+// ===== DAILY QUOTA UI =====
+const quotaInfo = document.createElement('div');
+quotaInfo.id = 'quotaInfo';
+quotaInfo.style.cssText = `
+  padding: 9px 14px;
+  margin: 8px 0;
+  border-radius: 10px;
+  background: rgba(120,120,120,.09);
+  color: inherit;
+  font-size: 12px;
+  display: none;
+`;
 
+if (form && form.parentNode) {
+  form.parentNode.insertBefore(quotaInfo, form);
+}
+
+function updateQuota(quota) {
+  if (!quota || !quotaInfo) return;
+
+  const names = {
+    guest: 'Guest',
+    free: 'Free',
+    plus: 'Plus',
+    pro_max: 'Pro Max'
+  };
+
+  quotaInfo.textContent =
+    `${names[quota.tier] || quota.tier} · ` +
+    `${quota.remaining} dari ${quota.limit} pesan tersisa hari ini`;
+
+  quotaInfo.style.display = 'block';
+}
   // ===== AUTH UI =====
   const googleLoginButton = $('#googleLoginButton');
   const googleLoginLabel = $('#googleLoginLabel');
@@ -457,82 +489,114 @@
   }
 
   // ===== SEND MESSAGE TO AI =====
-  async function submitMessage(text) {
-    const message = (text ?? input.value).trim();
+  
+async function submitMessage(text) {
+  const message = (text ?? input.value).trim();
 
-    if (!message || busy) return;
+  if (!message || busy) return;
 
-    setView('chat');
+  setView('chat');
 
-    busy = true;
-    sendButton.disabled = true;
-    input.value = '';
-    resizeInput();
+  busy = true;
+  sendButton.disabled = true;
+  input.value = '';
+  resizeInput();
 
-    addMessage('user', message);
+  addMessage('user', message);
+  const typing = addTyping();
 
-    const typing = addTyping();
+  try {
+    const headers = {
+      'Content-Type': 'application/json'
+    };
 
-    try {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          message,
-          history
-        })
-      });
+    // Ambil token sesi terbaru dari Supabase.
+    const { data: sessionData, error: sessionError } =
+      await supabaseClient.auth.getSession();
 
-      const data = await response.json().catch(() => ({}));
+    if (sessionError) throw sessionError;
 
-      typing.remove();
+    const session = sessionData.session;
 
-      if (!response.ok) {
-        addMessage(
-          'assistant',
-          data.error || 'Pesan belum bisa diproses. Coba lagi.',
-          { error: true }
-        );
-      } else {
-        const answer =
-          data.answer || 'Belum ada jawaban. Coba kirim ulang pesanmu.';
+    if (currentUser && !session?.access_token) {
+      throw new Error(
+        'Sesi login tidak ditemukan. Silakan login ulang.'
+      );
+    }
 
-        addMessage('assistant', answer);
+    if (session?.access_token) {
+      headers.Authorization = `Bearer ${session.access_token}`;
+    }
 
-        history.push(
-          { role: 'user', text: message },
-          { role: 'model', text: answer }
-        );
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers,
+      credentials: 'same-origin',
+      body: JSON.stringify({
+        message,
+        history
+      })
+    });
 
-        history = history.slice(-12);
+    const data = await response.json().catch(() => ({}));
 
-        activeMessages.push(
-          { role: 'user', text: message },
-          { role: 'assistant', text: answer }
-        );
+    typing.remove();
 
-        if (currentUser) {
-          await saveConversation();
-        }
-      }
-    } catch (error) {
-      typing.remove();
+    if (data.quota) {
+      updateQuota(data.quota);
+    }
 
-      console.error('Chat error:', error);
-
+    if (!response.ok) {
       addMessage(
         'assistant',
-        'Tidak dapat terhubung ke server. Periksa koneksi internet atau coba lagi nanti.',
+        data.error || 'Pesan belum bisa diproses. Coba lagi.',
         { error: true }
       );
-    } finally {
-      busy = false;
-      sendButton.disabled = false;
-      input.focus();
+
+      return;
     }
+
+    const answer =
+      data.answer ||
+      'Belum ada jawaban. Coba kirim ulang pesanmu.';
+
+    addMessage('assistant', answer);
+
+    history.push(
+      { role: 'user', text: message },
+      { role: 'model', text: answer }
+    );
+
+    history = history.slice(-12);
+
+    activeMessages.push(
+      { role: 'user', text: message },
+      { role: 'assistant', text: answer }
+    );
+
+    if (currentUser) {
+      await saveConversation();
+    }
+
+  } catch (error) {
+    typing.remove();
+
+    console.error('Chat error:', error);
+
+    addMessage(
+      'assistant',
+      error.message ||
+        'Tidak dapat terhubung ke server. Coba lagi nanti.',
+      { error: true }
+    );
+
+  } finally {
+    busy = false;
+    sendButton.disabled = false;
+    input.focus();
   }
+}
+  
 
   // ===== SYSTEM HEALTH =====
   async function checkHealth() {
