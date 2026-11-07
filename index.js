@@ -142,31 +142,37 @@ async function consumeQuota({ userId, guestId }) {
 }
 
 app.get('/api/health', (_req, res) => {
-  const configured = Boolean(
-    GROQ_API_KEY &&
-    SUPABASE_URL &&
-    SUPABASE_PUBLISHABLE_KEY &&
-    SUPABASE_SECRET_KEY &&
-    GUEST_TOKEN_SECRET
-  );
+
+app.get('/api/health', (_req, res) => {
+  const envCheck = {
+    groq: Boolean(process.env.GROQ_API_KEY),
+    supabaseUrl: Boolean(process.env.SUPABASE_URL),
+    supabasePublishableKey: Boolean(process.env.SUPABASE_PUBLISHABLE_KEY),
+    supabaseSecretKey: Boolean(process.env.SUPABASE_SECRET_KEY),
+    guestTokenSecret: Boolean(process.env.GUEST_TOKEN_SECRET)
+  };
+
+  const providerConfigured = envCheck.groq;
+
+  const quotaConfigured =
+    envCheck.supabaseUrl &&
+    envCheck.supabasePublishableKey &&
+    envCheck.supabaseSecretKey &&
+    envCheck.guestTokenSecret;
 
   res.status(200).json({
     status: 'ok',
     app: 'ExcitementAI',
-    version: '2.2.0',
+    version: '2.2.1',
     provider: 'Groq',
-    providerConfigured: Boolean(GROQ_API_KEY),
-    quotaConfigured: Boolean(
-      SUPABASE_URL &&
-      SUPABASE_PUBLISHABLE_KEY &&
-      SUPABASE_SECRET_KEY &&
-      GUEST_TOKEN_SECRET
-    ),
-    configured,
+    providerConfigured,
+    quotaConfigured,
+    configured: providerConfigured && quotaConfigured,
+    diagnostics: envCheck,
     timestamp: new Date().toISOString()
   });
 });
-
+  
 app.post('/api/chat', async (req, res) => {
   try {
     if (
