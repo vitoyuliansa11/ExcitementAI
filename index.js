@@ -31,6 +31,7 @@ function getCookie(req, name) {
     if (index < 0) continue;
 
     const key = cookie.slice(0, index).trim();
+
     if (key === name) {
       return cookie.slice(index + 1).trim();
     }
@@ -128,7 +129,6 @@ async function consumeQuota({ userId, guestId }) {
 
   if (!response.ok) {
     console.error('Supabase quota error:', response.status, result);
-
     throw new Error('QUOTA_SERVICE_ERROR');
   }
 
@@ -141,8 +141,7 @@ async function consumeQuota({ userId, guestId }) {
   return quota;
 }
 
-app.get('/api/health', (_req, res) => {
-
+// HEALTH CHECK DAN DIAGNOSTIK
 app.get('/api/health', (_req, res) => {
   const envCheck = {
     groq: Boolean(process.env.GROQ_API_KEY),
@@ -172,7 +171,8 @@ app.get('/api/health', (_req, res) => {
     timestamp: new Date().toISOString()
   });
 });
-  
+
+// CHAT API
 app.post('/api/chat', async (req, res) => {
   try {
     if (
@@ -210,7 +210,7 @@ app.post('/api/chat', async (req, res) => {
       });
     }
 
-    // Verifikasi identitas Google melalui Supabase Auth.
+    // VERIFIKASI LOGIN SUPABASE
     const authorization = req.headers.authorization || '';
     const bearerMatch = authorization.match(/^Bearer\s+(.+)$/i);
 
@@ -227,6 +227,7 @@ app.post('/api/chat', async (req, res) => {
         user = await verifySupabaseUser(bearerMatch[1]);
       } catch (error) {
         console.error('Auth verification error:', error.message);
+
         return res.status(503).json({
           error: 'Gagal memverifikasi login. Coba lagi.'
         });
@@ -239,7 +240,7 @@ app.post('/api/chat', async (req, res) => {
       }
     }
 
-    // Guest mendapatkan identitas melalui cookie bertanda tangan.
+    // IDENTITAS GUEST
     let guestId = null;
 
     if (!user) {
@@ -251,7 +252,7 @@ app.post('/api/chat', async (req, res) => {
       }
     }
 
-    // Konsumsi kuota dilakukan secara atomik di database.
+    // KONSUMSI KUOTA
     let quota;
 
     try {
@@ -327,6 +328,7 @@ ATURAN UMUM:
       GROQ_MODEL || 'llama-3.3-70b-versatile'
     ).trim();
 
+    // REQUEST KE GROQ
     const upstream = await fetch(
       'https://api.groq.com/openai/v1/chat/completions',
       {
@@ -402,18 +404,21 @@ ATURAN UMUM:
   }
 });
 
+// API YANG TIDAK DITEMUKAN
 app.use('/api', (_req, res) => {
   res.status(404).json({
     error: 'Endpoint API tidak ditemukan.'
   });
 });
 
+// HALAMAN WEBSITE
 app.use((req, res, next) => {
   if (req.method !== 'GET') return next();
 
   return res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
 });
 
+// ERROR HANDLER
 app.use((err, _req, res, _next) => {
   if (err instanceof SyntaxError && 'body' in err) {
     return res.status(400).json({
@@ -428,6 +433,7 @@ app.use((err, _req, res, _next) => {
   });
 });
 
+// LOCAL SERVER
 if (require.main === module) {
   app.listen(PORT, () => {
     console.log(`ExcitementAI ready at http://localhost:${PORT}`);
@@ -435,4 +441,4 @@ if (require.main === module) {
 }
 
 module.exports = app;
-    
+      
