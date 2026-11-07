@@ -59,6 +59,7 @@ if (form && form.parentNode) {
   form.parentNode.insertBefore(quotaInfo, form);
 }
 
+
 function updateQuota(quota) {
   if (!quota || !quotaInfo) return;
 
@@ -69,12 +70,23 @@ function updateQuota(quota) {
     pro_max: 'Pro Max'
   };
 
+  const tier = names[quota.tier] || quota.tier;
+  const remaining = Number(quota.remaining);
+  const limit = Number(quota.daily_limit);
+
   quotaInfo.textContent =
-    `${names[quota.tier] || quota.tier} · ` +
-    `${quota.remaining} dari ${quota.limit} pesan tersisa hari ini`;
+    `${tier} · ${remaining} dari ${limit} pesan tersisa hari ini`;
+
+  if (quota.allowed === false || remaining <= 0) {
+    quotaInfo.textContent += ' · Kuota habis';
+    quotaInfo.style.color = '#ef7777';
+  } else {
+    quotaInfo.style.color = 'inherit';
+  }
 
   quotaInfo.style.display = 'block';
 }
+  
   // ===== AUTH UI =====
   const googleLoginButton = $('#googleLoginButton');
   const googleLoginLabel = $('#googleLoginLabel');
@@ -621,10 +633,10 @@ async function submitMessage(text) {
         throw new Error('Health check gagal');
       }
 
-      if (data.providerConfigured) {
+      if (data.providerConfigured && data.quotaConfigured) {
         dot.className = 'status-dot ok';
         title.textContent = 'Sistem siap';
-        sub.textContent = 'Layanan AI terkonfigurasi';
+        sub.textContent = 'Layanan AI dan sistem kuota terkonfigurasi';
       } else {
         dot.className = 'status-dot bad';
         title.textContent = 'Setup diperlukan';
