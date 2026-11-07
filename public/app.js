@@ -77,11 +77,11 @@
     }
 
     #modeSelectorWrapper .ea-mode-label {
-      font-size:13px;
-      font-weight:650;
-      color:var(--text, inherit);
-      white-space:nowrap;
-    }
+  font-size:13px;
+  font-weight:650;
+  color:#c4b5fd;
+  white-space:nowrap;
+}
 
     #eaModeSelector {
       appearance:none;
@@ -90,10 +90,10 @@
       max-width:100%;
       padding:9px 34px 9px 12px;
       border-radius:10px;
-      border:1px solid rgba(148,163,184,.24);
+      border:1px solid rgba(167,139,250,.65);
       outline:none;
-      background-color:var(--surface, #171923);
-      color:var(--text, inherit);
+      background-color:#252044;
+      color:#ffffff;
       font:inherit;
       font-size:13px;
       font-weight:600;
@@ -110,10 +110,10 @@
     }
 
     #eaModeSelector option {
-      background:#171923;
-      color:#e5e7eb;
-      padding:10px;
-    }
+  background:#252044;
+  color:#ffffff;
+  padding:10px;
+}
 
     #eaModeSelector option[value="free"] {
       color:#cbd5e1;
