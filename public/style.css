@@ -1,4 +1,3 @@
-
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
 
 :root {
@@ -686,7 +685,7 @@ button {
   line-height: 1.75;
 }
 
-.message.error .message-text {
+.message.error 
   color: #b44757;
 }
 
@@ -949,6 +948,43 @@ button {
   color: #77788f;
   font-size: 12px;
   line-height: 1.6;
+}
+
+.founder-details {
+  min-width: 0;
+}
+
+.founder-socials {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.founder-socials a {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 10px;
+  border: 1px solid #e7e3fb;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, .82);
+  color: #6258bd;
+  font-size: 11px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: border-color .2s, background .2s, transform .2s;
+}
+
+.founder-socials a span {
+  color: #77788f;
+  font-weight: 500;
+}
+
+.founder-socials a:hover {
+  border-color: #bdb5f4;
+  background: #f7f5ff;
+  transform: translateY(-1px);
 }
 
 .founder-star {
@@ -1261,4 +1297,3 @@ button {
     transition-duration: .01ms !important;
   }
   }
-  
