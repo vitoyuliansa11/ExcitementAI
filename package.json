@@ -2,7 +2,7 @@
   "name": "excitementai",
   "version": "2.0.0",
   "private": true,
-  "description": "ExcitementAI — an AI chat experience powered by Gemini and hosted on Vercel.",
+  "description": "ExcitementAI — an AI chat experience powered by Groq, Supabase, and Express.",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
